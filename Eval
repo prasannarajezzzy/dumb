@@ -1,0 +1,154 @@
+import time
+import psutil
+from langchain.vectorstores import Qdrant
+from langchain.embeddings import HuggingFaceBgeEmbeddings
+from langchain.schema import Document
+from sklearn.metrics import precision_score, recall_score, f1_score
+import numpy as np
+
+queries = [
+    "How does global warming affect polar bears?",
+    "What are the benefits of renewable energy?",
+    "How does deforestation impact the environment?",
+    "What are the effects of ocean acidification?",
+    "How does climate change affect agriculture?",
+]
+
+ground_truth_labels = {
+    "How does global warming affect polar bears?": [1],
+    "What are the benefits of renewable energy?": [2],
+    "How does deforestation impact the environment?": [3],
+    "What are the effects of ocean acidification?": [4],
+    "How does climate change affect agriculture?": [5]
+}
+
+documents = [
+    {"id": 1, "text": "The impact of global warming on polar bear populations is severe, reducing ice habitats."},
+    {"id": 2, "text": "Renewable energy adoption can significantly reduce greenhouse gas emissions."},
+    {"id": 3, "text": "Deforestation contributes to increased carbon levels and impacts climate patterns."},
+    {"id": 4, "text": "Ocean acidification due to CO2 emissions affects marine biodiversity."},
+    {"id": 5, "text": "The effects of climate change on agricultural productivity in arid regions are concerning."},
+    {"id": 6, "text": "Coral bleaching is exacerbated by rising sea temperatures."},
+    {"id": 7, "text": "Electric vehicles can help mitigate climate change by reducing fossil fuel dependence."},
+    {"id": 8, "text": "Methane emissions from livestock are a significant contributor to global warming."},
+    {"id": 9, "text": "The Paris Agreement aims to limit global temperature rise to below 2°C."},
+    {"id": 10, "text": "Climate change is leading to more frequent and severe weather events."}
+]
+
+documents = [
+    Document(page_content=doc["text"], metadata={"id": doc["id"]}) 
+    for doc in documents
+]
+
+url = "http://localhost:6333"
+collection_name = "climate_change_db"
+
+metrics = {
+    "index_time": [],
+    "query_time": [],
+    "precision": [],
+    "recall": [],
+    "f1_score": [],
+    "memory_usage": []
+}
+
+def evaluate_model(model_name, model_class, model_kwargs, encode_kwargs):
+    print(f"\nEvaluating model: {model_name}")
+    
+    embeddings = model_class(
+        model_name=model_name,
+        model_kwargs=model_kwargs,
+        encode_kwargs=encode_kwargs
+    )
+    
+    process = psutil.Process()
+    initial_memory = process.memory_info().rss / (1024 * 1024)
+
+    start_index_time = time.time()
+    qdrant = Qdrant.from_documents(
+        documents,
+        embeddings,
+        url=url,
+        prefer_grpc=False,
+        collection_name=collection_name,
+        distance_func="Cosine",
+        force_recreate=True
+    )
+    end_index_time = time.time()
+    index_time = end_index_time - start_index_time
+    metrics["index_time"].append(index_time)
+    
+    final_memory = process.memory_info().rss / (1024 * 1024)
+    memory_used = final_memory - initial_memory
+    metrics["memory_usage"].append(memory_used)
+    
+    print(f"Vector DB created in {index_time:.2f} seconds")
+    print(f"Memory used by Qdrant: {memory_used:.2f} MB")
+
+    precision_list, recall_list, f1_list = [], [], []
+
+    for query in queries:
+        start_query_time = time.time()
+        results = qdrant.similarity_search(query, k=5)
+        end_query_time = time.time()
+        
+        query_time = end_query_time - start_query_time
+        metrics["query_time"].append(query_time)
+
+        retrieved_ids = [res.metadata['id'] for res in results if 'id' in res.metadata]
+        actual_ids = ground_truth_labels.get(query, [])
+
+        y_true = [1 if doc_id in actual_ids else 0 for doc_id in retrieved_ids]
+        y_pred = [1] * len(retrieved_ids)
+
+        if y_true:
+            precision = precision_score(y_true, y_pred, zero_division=0)
+            recall = recall_score(y_true, y_pred, zero_division=0)
+            f1 = f1_score(y_true, y_pred, zero_division=0)
+        else:
+            precision, recall, f1 = 0, 0, 0
+
+        precision_list.append(precision)
+        recall_list.append(recall)
+        f1_list.append(f1)
+    
+    metrics["precision"].append(np.mean(precision_list))
+    metrics["recall"].append(np.mean(recall_list))
+    metrics["f1_score"].append(np.mean(f1_list))
+    
+    print(f"Average Query Time: {np.mean(metrics['query_time']):.2f}s")
+    print(f"Precision: {np.mean(precision_list):.2f}, Recall: {np.mean(recall_list):.2f}, F1 Score: {np.mean(f1_list):.2f}")
+
+embedding_models = [
+    {
+        "name": "BAAI/bge-large-en",
+        "model_class": HuggingFaceBgeEmbeddings,
+        "model_kwargs": {'device': 'cpu'},
+        "encode_kwargs": {'normalize_embeddings': False}
+    },
+    {
+        "name": "all-MiniLM-L6-v2",
+        "model_class": HuggingFaceBgeEmbeddings,
+        "model_kwargs": {'device': 'cpu'},
+        "encode_kwargs": {'normalize_embeddings': False}
+    }
+]
+
+for model in embedding_models:
+    evaluate_model(
+        model["name"],
+        model["model_class"],
+        model["model_kwargs"],
+        model["encode_kwargs"]
+    )
+
+print("\nEmbedding Model Comparison Results:")
+for i, model in enumerate(embedding_models):
+    print(f"Model: {model['name']}")
+    print(f"  Index Time: {metrics['index_time'][i]:.2f}s")
+    print(f"  Query Time: {metrics['query_time'][i]:.2f}s")
+    print(f"  Memory Usage: {metrics['memory_usage'][i]:.2f} MB")
+    print(f"  Precision: {metrics['precision'][i]:.2f}")
+    print(f"  Recall: {metrics['recall'][i]:.2f}")
+    print(f"  F1 Score: {metrics['f1_score'][i]:.2f}")
+    print("-" * 40)
