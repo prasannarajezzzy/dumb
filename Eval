@@ -1,3 +1,7 @@
+
+
+
+
 import time
 import psutil
 from langchain.vectorstores import Qdrant
@@ -119,7 +123,18 @@ def evaluate_model(model_name, model_class, model_kwargs, encode_kwargs):
     print(f"Average Query Time: {np.mean(metrics['query_time']):.2f}s")
     print(f"Precision: {np.mean(precision_list):.2f}, Recall: {np.mean(recall_list):.2f}, F1 Score: {np.mean(f1_list):.2f}")
 
+
+
+
+
+
 embedding_models = [
+        {
+        "name": "nomic-ai/nomic-embed-text-v1",
+        "model_class": HuggingFaceBgeEmbeddings,  # Replace if needed
+        "model_kwargs": {'device': 'cpu', 'trust_remote_code': True},  # Add trust_remote_code
+        "encode_kwargs": {'normalize_embeddings': True}  # Adjust based on the Nomic model's requirements
+    },
     {
         "name": "BAAI/bge-large-en",
         "model_class": HuggingFaceBgeEmbeddings,
@@ -132,7 +147,9 @@ embedding_models = [
         "model_kwargs": {'device': 'cpu'},
         "encode_kwargs": {'normalize_embeddings': False}
     }
+
 ]
+
 
 for model in embedding_models:
     evaluate_model(
