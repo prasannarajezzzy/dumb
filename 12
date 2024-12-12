@@ -1,18 +1,9 @@
-Subject: Request for Firewall Configuration Details
-
-Hi [Recipient's Name],
-
-I am Prasanna from the AI/ML Platform Team at GEICO. We have built a Slackbot called "Gecko-AI" on the geico-sandbox.enterprise.slack.com workspace, which communicates with our backend deployed on an AKS cluster.
-
-To ensure secure communication between the Slackbot and our backend, we need to set up a firewall. For this, we require specific details, including:
-
-Environment: [Specify any environment details if applicable]
-Source: [Details about the source]
-Server Name: [Details about the backend server]
-We have identified some relevant details, which are attached in the accompanying document. Could you please review and confirm whether these configurations are accurate and suitable for our setup?
-
-Thank you for your assistance. Looking forward to your response.
-
-Best regards,
-Prasanna
-AI/ML Platform Team
+curl -X POST "" \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer your_api_key" \
+-d '{
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "max_tokens": 1024
+}'
