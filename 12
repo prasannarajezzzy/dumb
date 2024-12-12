@@ -1,99 +1,18 @@
-reate a Basic Flask App
-Create a new directory for your project and add the following files:
+Subject: Request for Firewall Configuration Details
 
-app.py
-python
-Copy code
-from flask import Flask
+Hi [Recipient's Name],
 
-app = Flask(__name__)
+I am Prasanna from the AI/ML Platform Team at GEICO. We have built a Slackbot called "Gecko-AI" on the geico-sandbox.enterprise.slack.com workspace, which communicates with our backend deployed on an AKS cluster.
 
-@app.route('/')
-def home():
-    return "Hello, Azure! This is a basic Flask app."
+To ensure secure communication between the Slackbot and our backend, we need to set up a firewall. For this, we require specific details, including:
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-2. Create a requirements.txt
-This file lists the dependencies for the app.
+Environment: [Specify any environment details if applicable]
+Source: [Details about the source]
+Server Name: [Details about the backend server]
+We have identified some relevant details, which are attached in the accompanying document. Could you please review and confirm whether these configurations are accurate and suitable for our setup?
 
-requirements.txt
-makefile
-Copy code
-Flask==2.3.2
-3. Create a Dockerfile
-Dockerfile
-dockerfile
-Copy code
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+Thank you for your assistance. Looking forward to your response.
 
-# Set the working directory in the container
-WORKDIR /app
-
-# Copy the current directory contents into the container
-COPY . /app
-
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Make port 5000 available to the world outside this container
-EXPOSE 5000
-
-# Define environment variable
-ENV FLASK_ENV=development
-
-# Run app.py when the container launches
-CMD ["python", "app.py"]
-4. Build and Run the Docker Container
-Run the following commands to build and test your Docker container:
-
-bash
-Copy code
-# Build the Docker image
-docker build -t basic-flask-app .
-
-# Run the Docker container
-docker run -p 5000:5000 basic-flask-app
-Visit http://localhost:5000 in your browser to see the app running.
-
-5. Prepare for Azure Deployment
-Create azure-deploy.sh (optional script for deployment)
-bash
-Copy code
-#!/bin/bash
-# Create a resource group
-az group create --name MyResourceGroup --location eastus
-
-# Create a container registry
-az acr create --resource-group MyResourceGroup --name MyContainerRegistry --sku Basic
-
-# Log in to the container registry
-az acr login --name MyContainerRegistry
-
-# Tag the Docker image
-docker tag basic-flask-app MyContainerRegistry.azurecr.io/basic-flask-app:v1
-
-# Push the image to Azure Container Registry
-docker push MyContainerRegistry.azurecr.io/basic-flask-app:v1
-
-# Create a container instance
-az container create \
-    --resource-group MyResourceGroup \
-    --name MyFlaskAppContainer \
-    --image MyContainerRegistry.azurecr.io/basic-flask-app:v1 \
-    --dns-name-label myflaskapp-container \
-    --ports 5000
-Make sure you have the Azure CLI installed and authenticated to run this script.
-
-6. Deploy to Azure
-Build and push the Docker image to Azure Container Registry.
-Create an Azure Container Instance using the Azure CLI or Azure Portal.
-Access the app using the public DNS name provided by Azure Container Instance.
-This creates a minimal application ready for deployment on Azure. Let me know if you want detailed help on any of the steps!
-
-
-
-
-
-
+Best regards,
+Prasanna
+AI/ML Platform Team
