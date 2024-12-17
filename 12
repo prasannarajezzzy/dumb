@@ -1,9 +1,14 @@
-curl -X POST "" \
--H "Content-Type: application/json" \
--H "Authorization: Bearer your_api_key" \
--d '{
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "temperature": 0.7,
-    "top_p": 0.9,
-    "max_tokens": 1024
-}'
+Subject: Request for H-1B Sponsorship and Next Steps
+
+Dear [Recipient's Name],
+
+I hope this email finds you well. I am writing to inquire about the possibility of obtaining H-1B visa sponsorship through our company. I would greatly appreciate any guidance regarding the eligibility, required documentation, and next steps involved in initiating the process.
+
+Additionally, it would be helpful to understand:
+
+The current policy or criteria for H-1B sponsorship.
+Deadlines and timelines for filing petitions for this fiscal year.
+Any actions or information needed from my end to facilitate the process.
+Please let me know if there is a formal process or specific forms I should complete. I am happy to provide any further details or set up a meeting to discuss this further at your earliest convenience.
+
+Thank you for your time and support. I look forward to your response.
