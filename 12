@@ -1,14 +1,109 @@
-Subject: Request for H-1B Sponsorship and Next Steps
+import os
+import logging
+import time
+from quart import Quart, request, jsonify, Response
+from slack_sdk.web.async_client import AsyncWebClient
+from slack_sdk.signature import SignatureVerifier
+from dotenv import load_dotenv
+from pathlib import Path
+from llm import get_llm_response
+import asyncio
 
-Dear [Recipient's Name],
+# Load environment variables
+env_path = Path('.') / '.env'
+load_dotenv(dotenv_path=env_path)
 
-I hope this email finds you well. I am writing to inquire about the possibility of obtaining H-1B visa sponsorship through our company. I would greatly appreciate any guidance regarding the eligibility, required documentation, and next steps involved in initiating the process.
+# Configure logging in JSON format
+log_file = 'app.log'
+logging.basicConfig(level=logging.INFO, filename=log_file, filemode='a', 
+                    format='%(message)s')  # Logging already serialized JSON strings
 
-Additionally, it would be helpful to understand:
+logger = logging.getLogger(__name__)
 
-The current policy or criteria for H-1B sponsorship.
-Deadlines and timelines for filing petitions for this fiscal year.
-Any actions or information needed from my end to facilitate the process.
-Please let me know if there is a formal process or specific forms I should complete. I am happy to provide any further details or set up a meeting to discuss this further at your earliest convenience.
+# Helper to log in JSON format
+def log_json(level, msg, **kwargs):
+    log_entry = {
+        "level": level,
+        "ts": time.time(),
+        "msg": msg,
+    }
+    log_entry.update(kwargs)
+    logger.info(log_entry)
 
-Thank you for your time and support. I look forward to your response.
+# Initialize Quart app
+app = Quart(__name__)
+
+# Slack client and signature verifier
+slack_client = AsyncWebClient(token=os.getenv('SLACK_TOKEN'))
+signature_verifier = SignatureVerifier(os.getenv('SLACK_SIGNING_SECRET'))
+
+try:
+    BOT_ID = asyncio.run(slack_client.auth_test())["user_id"]
+except Exception as e:
+    log_json("error", "Error retrieving BOT ID", error=str(e))
+    raise
+
+@app.route('/slack/events', methods=['POST'])
+async def slack_events():
+    """Endpoint for handling Slack events."""
+    start_time = time.time()
+    try:
+        # Verify the request signature
+        if not signature_verifier.is_valid_request(await request.get_data(), request.headers):
+            log_json("error", "Invalid request signature", endpoint="/slack/events")
+            return "Invalid request signature", 403
+
+        payload = await request.json
+        log_json("info", "Received payload", payload=payload)
+
+        if "challenge" in payload:
+            return jsonify({"challenge": payload["challenge"]})
+
+        event = payload.get("event", {})
+        if event.get("type") == "message" and not event.get("bot_id"):
+            channel_id = event.get("channel")
+            user_id = event.get("user")
+            text = event.get("text")
+
+            if BOT_ID != user_id:
+                log_json("info", "Message received", user_id=user_id, text=text)
+
+                # Use asyncio.create_task to parallelize processing
+                response = await asyncio.create_task(get_llm_response(text))
+
+                await slack_client.chat_postMessage(channel=channel_id, text=response)
+                log_json("info", "LLM Response sent", response=response, user_id=user_id)
+
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        log_json("error", "Error processing Slack event", error=str(e))
+        return jsonify({"error": str(e)}), 500
+    finally:
+        elapsed_time = time.time() - start_time
+        log_json("info", "Request processed", endpoint="/slack/events", duration=elapsed_time)
+
+@app.route('/health', methods=['GET'])
+async def health_check():
+    """Health check endpoint."""
+    log_json("info", "Health check performed", endpoint="/health")
+    return jsonify({'status': 'ok'}), 200
+
+@app.route('/logs', methods=['GET'])
+async def get_logs():
+    """Endpoint to display logs."""
+    try:
+        # Read log file
+        with open(log_file, 'r') as f:
+            logs = f.read()
+        log_json("info", "Logs retrieved successfully", endpoint="/logs")
+        return Response(logs, content_type='text/plain')
+    except Exception as e:
+        log_json("error", "Error retrieving logs", error=str(e))
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+
+    log_json("info", "Starting Quart app", port=port, debug=debug)
+    app.run(host='0.0.0.0', port=port, debug=debug)
